@@ -12,10 +12,10 @@
     <div><label><input id="center_y" type="range" min="0" max="200" value="100" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="200" value="100" oninput="this.previousElementSibling.value = this.value; update_arc();"> : center_y</label></div>
     <div><label><input id="inner_radius" type="range" min="0" max="200" value="35" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="200" value="35" oninput="this.previousElementSibling.value = this.value; update_arc();"> : inner_radius</label></div>
     <div><label><input id="outer_radius" type="range" min="0" max="200" value="40" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="200" value="40" oninput="this.previousElementSibling.value = this.value; update_arc();"> : outer_radius</label></div>
-    <div><label><input id="start_angle" type="range" min="0" max="359" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="359" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : start_angle</label></div>
-    <div><label><input id="end_angle" type="range" min="0" max="359" value="300" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="359" value="300" oninput="this.previousElementSibling.value = this.value; update_arc();"> : end_angle</label></div>
+    <div><label><input id="angle_start" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_start</label></div>
+    <div><label><input id="angle_end" type="range" min="0" max="360" value="300" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="360" value="300" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_end</label></div>
     <div>
-      <label><input id="offset" name="offset" type="range" min="0" max="359" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" name="offset2" min="0" max="359" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : (angle offset)</label>
+      <label><input id="offset" name="offset" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" name="offset2" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : (angle offset)</label>
       <label><input type="checkbox" onclick="if(this.checked) this.itv = setInterval(() => { document.forms[0].offset.value = document.forms[0].offset2.value = (parseInt(document.forms[0].offset.value) + 5) % 360; update_arc(); }, 20); else clearInterval(this.itv)">Animate</label>
     </div>
   </form>
@@ -25,14 +25,12 @@
     const ctx = canvas.getContext("2d");
 
 
-    function drawArc(center_x, center_y, inner_radius, outer_radius, start_angle, end_angle) {
-      let x, y, d, r, cnt, num_pts;
-      let inverted = start_angle > end_angle;
-      if(inverted) {
-        let tmp = start_angle;
-        start_angle = end_angle;
-        end_angle = tmp;
-      }
+    function drawArc(center_x, center_y, inner_radius, outer_radius, angle_start, angle_end) {
+      let x, y, d, r, cnt, num_pts, as, ae;
+      if(angle_start == angle_end) return;
+      let inverted = (angle_start > angle_end);
+      as = inverted ? angle_end : angle_start;
+      ae = inverted ? angle_start : angle_end;
       for(r = inner_radius; r <= outer_radius; r++) {
         x = 0;
         y = r;
@@ -40,14 +38,14 @@
         cnt = 0;
         num_pts = r * 8 / 10; // approximation
         while (y >= x) {
-          if((cnt > num_pts * start_angle / 45 && cnt < num_pts * end_angle / 45) ^ inverted) ctx.fillRect(center_x + y, center_y - x, 1, 1);
-          if((cnt > num_pts * (90 - end_angle) / 45 && cnt < num_pts * (90 - start_angle) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y - y, 1, 1);
-          if((cnt > num_pts * (start_angle - 90) / 45 && cnt < num_pts * (end_angle - 90) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y - y, 1, 1);
-          if((cnt > num_pts * (180 - end_angle) / 45 && cnt < num_pts * (180 - start_angle) / 45) ^ inverted) ctx.fillRect(center_x - y, center_y - x, 1, 1);
-          if((cnt > num_pts * (start_angle - 180) / 45 && cnt < num_pts * (end_angle - 180) / 45) ^ inverted) ctx.fillRect(center_x - y, center_y + x, 1, 1);
-          if((cnt > num_pts * (270 - end_angle) / 45 && cnt < num_pts * (270 - start_angle) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y + y, 1, 1);
-          if((cnt > num_pts * (start_angle - 270) / 45 && cnt < num_pts * (end_angle - 270) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y + y, 1, 1);
-          if((cnt > num_pts * (360 - end_angle) / 45 && cnt < num_pts * (360 - start_angle) / 45) ^ inverted) ctx.fillRect(center_x + y, center_y + x, 1, 1);
+          if((cnt > num_pts * as / 45 && cnt <= num_pts * ae / 45) ^ inverted) ctx.fillRect(center_x + y, center_y - x, 1, 1);
+          if((cnt > num_pts * (90 - ae) / 45 && cnt <= num_pts * (90 - as) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y - y, 1, 1);
+          if((cnt > num_pts * (as - 90) / 45 && cnt <= num_pts * (ae - 90) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y - y, 1, 1);
+          if((cnt > num_pts * (180 - ae) / 45 && cnt <= num_pts * (180 - as) / 45) ^ inverted) ctx.fillRect(center_x - y, center_y - x, 1, 1);
+          if((cnt > num_pts * (as - 180) / 45 && cnt <= num_pts * (ae - 180) / 45) ^ inverted) ctx.fillRect(center_x - y, center_y + x, 1, 1);
+          if((cnt > num_pts * (270 - ae) / 45 && cnt <= num_pts * (270 - as) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y + y, 1, 1);
+          if((cnt > num_pts * (as - 270) / 45 && cnt <= num_pts * (ae - 270) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y + y, 1, 1);
+          if((cnt > num_pts * (360 - ae) / 45 && cnt <= num_pts * (360 - as) / 45) ^ inverted) ctx.fillRect(center_x + y, center_y + x, 1, 1);
           if (d >= 2 * x) {
             d = d - 2 * x - 1;
             x = x + 1;
@@ -70,8 +68,8 @@
       const center_y = parseInt(document.forms[0].center_y.value);
       const inner_radius = parseInt(document.forms[0].inner_radius.value);
       const outer_radius = parseInt(document.forms[0].outer_radius.value);
-      const start_angle = (parseInt(document.forms[0].start_angle.value) + parseInt(document.forms[0].offset.value)) % 360;
-      const end_angle = (parseInt(document.forms[0].end_angle.value) + parseInt(document.forms[0].offset.value)) % 360;
+      const angle_start = (parseInt(document.forms[0].angle_start.value) + parseInt(document.forms[0].offset.value)) % 361;
+      const angle_end = (parseInt(document.forms[0].angle_end.value) + parseInt(document.forms[0].offset.value)) % 361;
 
       // Clear canvas and set color for the arc
       ctx.fillStyle = "white";
@@ -79,7 +77,7 @@
       ctx.fillStyle = "black";
 
       // Draw arc
-      drawArc(center_x, center_y, inner_radius, outer_radius, start_angle, end_angle);
+      drawArc(center_x, center_y, inner_radius, outer_radius, angle_start, angle_end);
     }
 
     // Initialize arc
