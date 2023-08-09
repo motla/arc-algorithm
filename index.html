@@ -15,22 +15,22 @@
     <div><label><input id="angle_start" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_start</label></div>
     <div><label><input id="angle_end" type="range" min="0" max="360" value="300" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="360" value="300" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_end</label></div>
     <div>
-      <label><input id="offset" name="offset" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" name="offset2" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : (percent offset)</label>
+      <label><input id="offset" name="offset" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" name="offset2" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : (angle offset)</label>
       <label><input type="checkbox" onclick="if(this.checked) this.itv = setInterval(() => { document.forms[0].offset.value = document.forms[0].offset2.value = (parseInt(document.forms[0].offset.value) + 5) % 360; update_arc(); }, 20); else clearInterval(this.itv)">Animate</label>
     </div>
     <div><label><input id="fast_approx" type="checkbox" onchange="update_arc()" checked> Fast approximation (no float, no trigonometric)</label></div>
   </form>
 
   <script>
+    const M_PI_2 = 1.57079632679489661923;
+    const M_PI_4 = 0.78539816339744830962;
+
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-
-    function drawArc(center_x, center_y, inner_radius, outer_radius, angle_start, angle_end, atan2f) {
+    function drawArc(center_x, center_y, inner_radius, outer_radius, angle_start, angle_end, atan2f_func) {
       // Declare variables
-      const M_PI_2 = 1.57079632679489661923;
-      const M_PI_4 = 0.78539816339744830962;
-      let x, y, d, r, cnt, num_pts, as, ae; // int
+      let x, y, d, r, as, ae, cnt, num_pts; // int32_t
 
       // Manage angle inputs
       if(angle_start == angle_end) return;
@@ -38,20 +38,21 @@
       as = inverted ? angle_end : angle_start;
       ae = inverted ? angle_start : angle_end;
 
-      // Trace each arc radius with Andres circle algorithm
+      // Trace each arc radius with the Andres circle algorithm
       for(r = inner_radius; r <= outer_radius; r++) {
         x = 0;
         y = r;
         d = r - 1;
         cnt = -1;
-        num_pts = atan2f ? 100 : r * 8 / 10; // if no atan2f() function is provided, we make a low cost approximation for the number of pixels drawn on 1/8th circle of radius r
+        num_pts = atan2f_func ? 100 : (r * 8 / 10); // if no atan2f() function is provided, we make a low cost approximation of the number of pixels drawn for a 1/8th circle of radius r
         
+        // Process each pixel of a 1/8th circle of radius r
         while (y >= x) {
-          // If atan2f() function is provided, get the percentage of 1/8th circle drawn, otherwise count the drawn pixels
-          if(atan2f) cnt = parseInt((M_PI_2 - atan2f(y, x)) / M_PI_4 * 100);
-          else cnt++;
 
-          // Fill the pixels of the 8 sections of the circle, only on the arc defined by the angles (start and end)
+          // If atan2f() function is provided, get the percentage of 1/8th circle drawn, otherwise count the drawn pixels
+          cnt = atan2f_func ? ((M_PI_2 - atan2f_func(y, x)) * 100 / M_PI_4) : (cnt + 1);
+
+          // Fill the pixels of the 8 sections of the circle, but only on the arc defined by the angles (start and end)
           if((cnt >= num_pts * as / 45 && cnt <= num_pts * ae / 45) ^ inverted) ctx.fillRect(center_x + y, center_y - x, 1, 1);
           if((cnt >= num_pts * (90 - ae) / 45 && cnt <= num_pts * (90 - as) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y - y, 1, 1);
           if((cnt >= num_pts * (as - 90) / 45 && cnt <= num_pts * (ae - 90) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y - y, 1, 1);
@@ -61,7 +62,7 @@
           if((cnt >= num_pts * (as - 270) / 45 && cnt <= num_pts * (ae - 270) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y + y, 1, 1);
           if((cnt >= num_pts * (360 - ae) / 45 && cnt <= num_pts * (360 - as) / 45) ^ inverted) ctx.fillRect(center_x + y, center_y + x, 1, 1);
 
-          // Process Andres circle algorithm
+          // Run Andres circle algorithm to get to the next pixel
           if (d >= 2 * x) {
             d = d - 2 * x - 1;
             x = x + 1;
