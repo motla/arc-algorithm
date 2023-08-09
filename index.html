@@ -40,7 +40,6 @@
         cnt = 0;
         num_pts = r * 8 / 10; // approximation
         while (y >= x) {
-          cnt++;
           if((cnt > num_pts * start_angle / 45 && cnt < num_pts * end_angle / 45) ^ inverted) ctx.fillRect(center_x + y, center_y - x, 1, 1);
           if((cnt > num_pts * (90 - end_angle) / 45 && cnt < num_pts * (90 - start_angle) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y - y, 1, 1);
           if((cnt > num_pts * (start_angle - 90) / 45 && cnt < num_pts * (end_angle - 90) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y - y, 1, 1);
@@ -60,6 +59,7 @@
             y = y - 1;
             x = x + 1;
           }
+          cnt++;
         }
       }
     }
