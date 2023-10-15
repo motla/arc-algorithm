@@ -27,20 +27,19 @@
 
     function drawArc(center_x, center_y, inner_radius, outer_radius, angle_start, angle_end, atan2f_func) {
       // Declare variables
-      let x, y, d, r, a_start, a_end, ratio, num_pts; // int32_t
+      let x, y, d, r, ratio;
 
       // Manage angle inputs
       const inverted = (angle_start > angle_end);
       const full = (angle_start == angle_end);
-      a_start = inverted ? angle_end : angle_start;
-      a_end = inverted ? angle_start : angle_end;
+      const a_start = inverted ? angle_end : angle_start;
+      const a_end = inverted ? angle_start : angle_end;
 
       // Trace each arc radius with the Andres circle algorithm
       for(r = inner_radius; r <= outer_radius; r++) {
         x = 0;
         y = r;
         d = r - 1;
-        ratio = -1;
         
         // Process each pixel of a 1/8th circle of radius r
         while (y >= x) {
