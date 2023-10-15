@@ -10,15 +10,12 @@
   <form>
     <div><label><input id="center_x" type="range" min="0" max="200" value="100" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="200" value="100" oninput="this.previousElementSibling.value = this.value; update_arc();"> : center_x</label></div>
     <div><label><input id="center_y" type="range" min="0" max="200" value="100" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="200" value="100" oninput="this.previousElementSibling.value = this.value; update_arc();"> : center_y</label></div>
-    <div><label><input id="inner_radius" type="range" min="0" max="150" value="35" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="150" value="35" oninput="this.previousElementSibling.value = this.value; update_arc();"> : inner_radius</label></div>
-    <div><label><input id="outer_radius" type="range" min="0" max="150" value="40" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="150" value="40" oninput="this.previousElementSibling.value = this.value; update_arc();"> : outer_radius</label></div>
-    <div><label><input id="angle_start" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_start</label></div>
-    <div><label><input id="angle_end" type="range" min="0" max="360" value="300" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="360" value="300" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_end</label></div>
-    <div>
-      <label><input id="offset" name="offset" type="range" min="0" max="360" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" name="offset2" min="0" max="360" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : (angle offset)</label>
-      <label><input type="checkbox" onclick="if(this.checked) this.itv = setInterval(() => { document.forms[0].offset.value = document.forms[0].offset2.value = (parseInt(document.forms[0].offset.value) + 5) % 360; update_arc(); }, 20); else clearInterval(this.itv)">Animate</label>
-    </div>
-    <div><label><input id="fast_approx" type="checkbox" onchange="update_arc()" checked> Fast approximation (no float, no trigonometric)</label></div>
+    <div><label><input id="inner_radius" type="range" min="0" max="150" value="18" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="150" value="18" oninput="this.previousElementSibling.value = this.value; update_arc();"> : inner_radius</label></div>
+    <div><label><input id="outer_radius" type="range" min="0" max="150" value="20" oninput="this.nextElementSibling.value = this.value; update_arc();"><input type="number" min="0" max="150" value="20" oninput="this.previousElementSibling.value = this.value; update_arc();"> : outer_radius</label></div>
+    <div><label><input id="angle_start" type="range" min="0" max="255" value="0" oninput="this.nextElementSibling.value = this.value; update_arc();"><input id="angle_start_number" type="number" min="0" max="255" value="0" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_start</label></div>
+    <div><label><input id="angle_end" type="range" min="0" max="255" value="220" oninput="this.nextElementSibling.value = this.value; update_arc();"><input id="angle_end_number" type="number" min="0" max="255" value="220" oninput="this.previousElementSibling.value = this.value; update_arc();"> : angle_end</label></div>
+    <div style="margin-top: 10px"><label><input id="animate" type="checkbox" onclick="toggle_animation()"> Loader animation</label></div>
+    <div style="margin-top: 10px"><label><input id="fast_approx" type="checkbox" onchange="update_arc()" checked> Fast arctan approximation (no float, no trigonometric)</label></div>
   </form>
 
   <script>
@@ -30,37 +27,40 @@
 
     function drawArc(center_x, center_y, inner_radius, outer_radius, angle_start, angle_end, atan2f_func) {
       // Declare variables
-      let x, y, d, r, as, ae, cnt, num_pts; // int32_t
+      let x, y, d, r, a_start, a_end, ratio, num_pts; // int32_t
 
       // Manage angle inputs
-      if(angle_start == angle_end) return;
-      let inverted = (angle_start > angle_end);
-      as = inverted ? angle_end : angle_start;
-      ae = inverted ? angle_start : angle_end;
+      const inverted = (angle_start > angle_end);
+      const full = (angle_start == angle_end);
+      a_start = inverted ? angle_end : angle_start;
+      a_end = inverted ? angle_start : angle_end;
 
       // Trace each arc radius with the Andres circle algorithm
       for(r = inner_radius; r <= outer_radius; r++) {
         x = 0;
         y = r;
         d = r - 1;
-        cnt = -1;
-        num_pts = atan2f_func ? 100 : (r * 8 / 10); // if no atan2f() function is provided, we make a low cost approximation of the number of pixels drawn for a 1/8th circle of radius r
+        ratio = -1;
         
         // Process each pixel of a 1/8th circle of radius r
         while (y >= x) {
 
-          // If atan2f() function is provided, get the percentage of 1/8th circle drawn, otherwise count the drawn pixels
-          cnt = atan2f_func ? ((M_PI_2 - atan2f_func(y, x)) * 100 / M_PI_4) : (cnt + 1);
+          // Get the percentage of 1/8th circle drawn with arctan(y/x)
+          if(!atan2f_func) { // if no arctan function is provided, process a fast approximation of arctan
+            let val = Math.floor(x * 255 / y); // 0 - 255
+            ratio = Math.floor(val * (770195 - (val - 255) * (val + 941)) / 6137491); // 0 - 32
+          }
+          else ratio = Math.floor((M_PI_2 - atan2f_func(y, x)) * 32 / M_PI_4); // 0 - 32
 
           // Fill the pixels of the 8 sections of the circle, but only on the arc defined by the angles (start and end)
-          if((cnt >= num_pts * as / 45 && cnt <= num_pts * ae / 45) ^ inverted) ctx.fillRect(center_x + y, center_y - x, 1, 1);
-          if((cnt >= num_pts * (90 - ae) / 45 && cnt <= num_pts * (90 - as) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y - y, 1, 1);
-          if((cnt >= num_pts * (as - 90) / 45 && cnt <= num_pts * (ae - 90) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y - y, 1, 1);
-          if((cnt >= num_pts * (180 - ae) / 45 && cnt <= num_pts * (180 - as) / 45) ^ inverted) ctx.fillRect(center_x - y, center_y - x, 1, 1);
-          if((cnt >= num_pts * (as - 180) / 45 && cnt <= num_pts * (ae - 180) / 45) ^ inverted) ctx.fillRect(center_x - y, center_y + x, 1, 1);
-          if((cnt >= num_pts * (270 - ae) / 45 && cnt <= num_pts * (270 - as) / 45) ^ inverted) ctx.fillRect(center_x - x, center_y + y, 1, 1);
-          if((cnt >= num_pts * (as - 270) / 45 && cnt <= num_pts * (ae - 270) / 45) ^ inverted) ctx.fillRect(center_x + x, center_y + y, 1, 1);
-          if((cnt >= num_pts * (360 - ae) / 45 && cnt <= num_pts * (360 - as) / 45) ^ inverted) ctx.fillRect(center_x + y, center_y + x, 1, 1);
+          if(full || ((ratio >= a_start && ratio < a_end) ^ inverted)) ctx.fillRect(center_x + y, center_y - x, 1, 1);
+          if(full || ((ratio > (63 - a_end) && ratio <= (63 - a_start)) ^ inverted)) ctx.fillRect(center_x + x, center_y - y, 1, 1);
+          if(full || ((ratio >= (a_start - 64) && ratio < (a_end - 64)) ^ inverted)) ctx.fillRect(center_x - x, center_y - y, 1, 1);
+          if(full || ((ratio > (127 - a_end) && ratio <= (127 - a_start)) ^ inverted)) ctx.fillRect(center_x - y, center_y - x, 1, 1);
+          if(full || ((ratio >= (a_start - 128) && ratio < (a_end - 128)) ^ inverted)) ctx.fillRect(center_x - y, center_y + x, 1, 1);
+          if(full || ((ratio > (191 - a_end) && ratio <= (191 - a_start)) ^ inverted)) ctx.fillRect(center_x - x, center_y + y, 1, 1);
+          if(full || ((ratio >= (a_start - 192) && ratio < (a_end - 192)) ^ inverted)) ctx.fillRect(center_x + x, center_y + y, 1, 1);
+          if(full || ((ratio > (255 - a_end) && ratio <= (255 - a_start)) ^ inverted)) ctx.fillRect(center_x + y, center_y + x, 1, 1);
 
           // Run Andres circle algorithm to get to the next pixel
           if (d >= 2 * x) {
@@ -84,8 +84,8 @@
       const center_y = parseInt(document.forms[0].center_y.value);
       const inner_radius = parseInt(document.forms[0].inner_radius.value);
       const outer_radius = parseInt(document.forms[0].outer_radius.value);
-      const angle_start = (parseInt(document.forms[0].angle_start.value) + parseInt(document.forms[0].offset.value)) % 361;
-      const angle_end = (parseInt(document.forms[0].angle_end.value) + parseInt(document.forms[0].offset.value)) % 361;
+      const angle_start = parseInt(document.forms[0].angle_start.value);
+      const angle_end = parseInt(document.forms[0].angle_end.value);
       const fast_approx = document.forms[0].fast_approx.checked;
 
       // Clear canvas and set color for the arc
@@ -99,6 +99,54 @@
 
     // Initialize arc
     update_arc();
+
+
+    
+    function toggle_animation() {
+      if(document.forms[0].animate.checked) {
+        // Initialize variables
+        this.small_increment = 3;
+        this.big_increment = 6;
+        this.grow = false;
+        this.prev_arc_length = -1;
+
+        // Start animation
+        this.anim_itv = setInterval(() => {
+          // Get start and end angles from form
+          let a_start = parseInt(document.forms[0].angle_start.value);
+          let a_end = parseInt(document.forms[0].angle_end.value);
+
+          // Decrement angles
+          a_start = (256 + a_start - (this.grow ? this.big_increment : this.small_increment)) % 256;
+          a_end = (256 + a_end - (this.grow ? this.small_increment : this.big_increment)) % 256;
+
+          // Get arc length
+          let arc_length = (256 + a_end - a_start) % 256;
+          if(this.prev_arc_length < 0) this.prev_arc_length = arc_length; // initialize this.prev_arc_length
+
+          // Check if arc overflows (grown above 255 or shrunk below 0)
+          if((this.grow && arc_length < this.prev_arc_length) || (!this.grow && arc_length > this.prev_arc_length)) {
+            // invert start and end angles, and invert animation
+            let tmp = a_start;
+            a_start = a_end;
+            a_end = tmp;
+            this.grow = !this.grow;
+            arc_length = this.grow ? 0 : 255;
+          }
+
+          // Update arc length for next iteration
+          this.prev_arc_length = arc_length;
+
+          // Update form and draw arc
+          document.forms[0].angle_start.value = document.forms[0].angle_start_number.value = a_start;
+          document.forms[0].angle_end.value = document.forms[0].angle_end_number.value = a_end;
+
+          // Draw arc (prevent drawing when angles are equal)
+          if(a_start != a_end) update_arc();
+        }, 15);
+      }
+      else clearInterval(this.anim_itv);
+    }
   </script>
 
 </body>
